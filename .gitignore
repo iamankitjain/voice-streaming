@@ -1,0 +1,7 @@
+.DS_Store
+.ipynb_checkpoints
+.venv
+__pycache__
+
+
+speech-to-speech/sample-codes/websocket-nodejs/node_modules/
