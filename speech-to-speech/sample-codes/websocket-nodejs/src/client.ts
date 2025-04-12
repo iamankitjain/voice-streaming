@@ -4,13 +4,8 @@ import {
   InvokeModelWithBidirectionalStreamCommand,
   InvokeModelWithBidirectionalStreamInput,
 } from "@aws-sdk/client-bedrock-runtime";
-import {
-  BedrockAgentRuntimeClient,
-  RetrieveAndGenerateCommand,
-  RetrieveAndGenerateType,
-} from "@aws-sdk/client-bedrock-agent-runtime";
-import axios from "axios";
-import https from "https";
+import axios from 'axios';
+import https from 'https';
 import {
   NodeHttp2Handler,
   NodeHttp2HandlerOptions,
@@ -19,23 +14,22 @@ import { Provider } from "@smithy/types";
 import { Buffer } from "node:buffer";
 import { randomUUID } from "node:crypto";
 import { InferenceConfig } from "./types";
-import { Subject } from "rxjs";
-import { take } from "rxjs/operators";
-import { firstValueFrom } from "rxjs";
+import { Subject } from 'rxjs';
+import { take } from 'rxjs/operators';
+import { firstValueFrom } from 'rxjs';
 import {
   DefaultAudioInputConfiguration,
   DefaultAudioOutputConfiguration,
-  DefaultRagSchema,
   DefaultSystemPrompt,
   DefaultTextConfiguration,
   DefaultToolSchema,
-  WeatherToolSchema,
+  WeatherToolSchema
 } from "./consts";
 
 export interface NovaSonicBidirectionalStreamClientConfig {
   requestHandlerConfig?:
-    | NodeHttp2HandlerOptions
-    | Provider<NodeHttp2HandlerOptions | void>;
+  | NodeHttp2HandlerOptions
+  | Provider<NodeHttp2HandlerOptions | void>;
   clientConfig: Partial<BedrockRuntimeClientConfig>;
   inferenceConfig?: InferenceConfig;
 }
@@ -49,13 +43,10 @@ export class StreamSession {
   constructor(
     private sessionId: string,
     private client: NovaSonicBidirectionalStreamClient
-  ) {}
+  ) { }
 
   // Register event handlers for this specific session
-  public onEvent(
-    eventType: string,
-    handler: (data: any) => void
-  ): StreamSession {
+  public onEvent(eventType: string, handler: (data: any) => void): StreamSession {
     this.client.registerEventHandler(this.sessionId, eventType, handler);
     return this; // For chaining
   }
@@ -66,13 +57,8 @@ export class StreamSession {
 
   public async setupSystemPrompt(
     textConfig: typeof DefaultTextConfiguration = DefaultTextConfiguration,
-    systemPromptContent: string = DefaultSystemPrompt
-  ): Promise<void> {
-    this.client.setupSystemPromptEvent(
-      this.sessionId,
-      textConfig,
-      systemPromptContent
-    );
+    systemPromptContent: string = DefaultSystemPrompt): Promise<void> {
+    this.client.setupSystemPromptEvent(this.sessionId, textConfig, systemPromptContent);
   }
 
   public async setupStartAudio(
@@ -80,6 +66,7 @@ export class StreamSession {
   ): Promise<void> {
     this.client.setupStartAudioEvent(this.sessionId, audioConfig);
   }
+
 
   // Stream audio for this session
   public async streamAudio(audioData: Buffer): Promise<void> {
@@ -97,12 +84,7 @@ export class StreamSession {
 
   // Process audio queue for continuous streaming
   private async processAudioQueue() {
-    if (
-      this.isProcessingAudio ||
-      this.audioBufferQueue.length === 0 ||
-      !this.isActive
-    )
-      return;
+    if (this.isProcessingAudio || this.audioBufferQueue.length === 0 || !this.isActive) return;
 
     this.isProcessingAudio = true;
     try {
@@ -110,11 +92,7 @@ export class StreamSession {
       let processedChunks = 0;
       const maxChunksPerBatch = 5; // Process max 5 chunks at a time to avoid overload
 
-      while (
-        this.audioBufferQueue.length > 0 &&
-        processedChunks < maxChunksPerBatch &&
-        this.isActive
-      ) {
+      while (this.audioBufferQueue.length > 0 && processedChunks < maxChunksPerBatch && this.isActive) {
         const audioChunk = this.audioBufferQueue.shift();
         if (audioChunk) {
           await this.client.streamAudioChunk(this.sessionId, audioChunk);
@@ -181,6 +159,7 @@ export class NovaSonicBidirectionalStreamClient {
   private sessionLastActivity: Map<string, number> = new Map();
   private sessionCleanupInProgress = new Set<string>();
 
+
   constructor(config: NovaSonicBidirectionalStreamClientConfig) {
     const nodeHttp2Handler = new NodeHttp2Handler({
       requestTimeout: 300000,
@@ -198,7 +177,7 @@ export class NovaSonicBidirectionalStreamClient {
       ...config.clientConfig,
       credentials: config.clientConfig.credentials,
       region: config.clientConfig.region || "us-east-1",
-      requestHandler: nodeHttp2Handler,
+      requestHandler: nodeHttp2Handler
     });
 
     this.inferenceConfig = config.inferenceConfig ?? {
@@ -229,11 +208,9 @@ export class NovaSonicBidirectionalStreamClient {
     return this.sessionCleanupInProgress.has(sessionId);
   }
 
+
   // Create a new streaming session
-  public createStreamSession(
-    sessionId: string = randomUUID(),
-    config?: NovaSonicBidirectionalStreamClientConfig
-  ): StreamSession {
+  public createStreamSession(sessionId: string = randomUUID(), config?: NovaSonicBidirectionalStreamClientConfig): StreamSession {
     if (this.activeSessions.has(sessionId)) {
       throw new Error(`Stream session with ID ${sessionId} already exists`);
     }
@@ -252,7 +229,7 @@ export class NovaSonicBidirectionalStreamClient {
       isActive: true,
       isPromptStartSent: false,
       isAudioContentStartSent: false,
-      audioContentId: randomUUID(),
+      audioContentId: randomUUID()
     };
 
     this.activeSessions.set(sessionId, session);
@@ -260,98 +237,51 @@ export class NovaSonicBidirectionalStreamClient {
     return new StreamSession(sessionId, this);
   }
 
-  private async processToolUse(
-    toolName: string,
-    toolUseContent: object
-  ): Promise<Object> {
+  private async processToolUse(toolName: string, toolUseContent: object): Promise<Object> {
     const tool = toolName.toLowerCase();
-    console.log("TOOL USER CONTENT", JSON.stringify(toolUseContent));
+
     switch (tool) {
       case "getdateandtimetool":
-        const date = new Date().toLocaleString("en-US", {
-          timeZone: "America/Los_Angeles",
-        });
+        const date = new Date().toLocaleString("en-US", { timeZone: "America/Los_Angeles" });
         const pstDate = new Date(date);
         return {
-          date: pstDate.toISOString().split("T")[0],
+          date: pstDate.toISOString().split('T')[0],
           year: pstDate.getFullYear(),
           month: pstDate.getMonth() + 1,
           day: pstDate.getDate(),
-          dayOfWeek: pstDate
-            .toLocaleString("en-US", { weekday: "long" })
-            .toUpperCase(),
+          dayOfWeek: pstDate.toLocaleString('en-US', { weekday: 'long' }).toUpperCase(),
           timezone: "PST",
-          formattedTime: pstDate.toLocaleTimeString("en-US", {
+          formattedTime: pstDate.toLocaleTimeString('en-US', {
             hour12: true,
-            hour: "2-digit",
-            minute: "2-digit",
-          }),
+            hour: '2-digit',
+            minute: '2-digit'
+          })
         };
-      case "getage":
-        return {
-          age: Math.floor(Math.random() * 100),
-        };
-      case "getmonopoly":
-        try {
-          const params = {
-            input: {
-              text: "how to build a house?",
-            },
-            retrieveAndGenerateConfiguration: {
-              type: RetrieveAndGenerateType.KNOWLEDGE_BASE,
-              knowledgeBaseConfiguration: {
-                knowledgeBaseId: "KQTR3789HR", // replace with your KB ID
-                modelArn:
-                  "arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-v2",
-              },
-            },
-          };
-          const clientKb = new BedrockAgentRuntimeClient({
-            region: "us-east-1",
-          });
-          const command = new RetrieveAndGenerateCommand(params);
-          const response = await clientKb.send(command);
-          if (response.output) {
-            console.log("Answer:", response.output.text);
-            return { answer: response.output.text };
-          } else {
-            console.log("Response output is undefined");
-          }
-        } catch (err) {
-          console.error("Error:", err);
-        }
       case "getweathertool":
-        console.log(`weather tool`);
-        const parsedContent = await this.parseToolUseContentForWeather(
-          toolUseContent
-        );
-        console.log("parsed content");
+        console.log(`weather tool`)
+        const parsedContent = await this.parseToolUseContentForWeather(toolUseContent);
+        console.log("parsed content")
         if (!parsedContent) {
-          throw new Error("parsedContent is undefined");
+          throw new Error('parsedContent is undefined');
         }
-        return this.fetchWeatherData(
-          parsedContent?.latitude,
-          parsedContent?.longitude
-        );
+        return this.fetchWeatherData(parsedContent?.latitude, parsedContent?.longitude);
       default:
-        console.log(`Tool ${tool} not supported`);
+        console.log(`Tool ${tool} not supported`)
         throw new Error(`Tool ${tool} not supported`);
     }
   }
 
-  private async parseToolUseContentForWeather(
-    toolUseContent: any
-  ): Promise<{ latitude: number; longitude: number } | null> {
+  private async parseToolUseContentForWeather(toolUseContent: any): Promise<{ latitude: number; longitude: number; } | null> {
     try {
       // Check if the content field exists and is a string
-      if (toolUseContent && typeof toolUseContent.content === "string") {
+      if (toolUseContent && typeof toolUseContent.content === 'string') {
         // Parse the JSON string into an object
         const parsedContent = JSON.parse(toolUseContent.content);
-        console.log(`parsedContent ${parsedContent}`);
+        console.log(`parsedContent ${parsedContent}`)
         // Return the parsed content
         return {
           latitude: parsedContent.latitude,
-          longitude: parsedContent.longitude,
+          longitude: parsedContent.longitude
         };
       }
       return null;
@@ -360,6 +290,7 @@ export class NovaSonicBidirectionalStreamClient {
       return null;
     }
   }
+
 
   private async fetchWeatherData(
     latitude: number,
@@ -373,26 +304,21 @@ export class NovaSonicBidirectionalStreamClient {
         httpsAgent: ipv4Agent,
         timeout: 5000,
         headers: {
-          "User-Agent": "MyApp/1.0",
-          Accept: "application/json",
-        },
+          'User-Agent': 'MyApp/1.0',
+          'Accept': 'application/json'
+        }
       });
       const weatherData = response.data;
       console.log("weatherData:", weatherData);
 
       return {
-        weather_data: weatherData,
+        weather_data: weatherData
       };
     } catch (error) {
       if (axios.isAxiosError(error)) {
         console.error(`Error fetching weather data: ${error.message}`, error);
       } else {
-        console.error(
-          `Unexpected error: ${
-            error instanceof Error ? error.message : String(error)
-          } `,
-          error
-        );
+        console.error(`Unexpected error: ${error instanceof Error ? error.message : String(error)} `, error);
       }
       throw error;
     }
@@ -421,17 +347,16 @@ export class NovaSonicBidirectionalStreamClient {
         })
       );
 
-      console.log(
-        `Stream established for session ${sessionId}, processing responses...`
-      );
+      console.log(`Stream established for session ${sessionId}, processing responses...`);
 
       // Process responses for this session
       await this.processResponseStream(sessionId, response);
+
     } catch (error) {
       console.error(`Error in session ${sessionId}: `, error);
-      this.dispatchEventForSession(sessionId, "error", {
-        source: "bidirectionalStream",
-        error,
+      this.dispatchEventForSession(sessionId, 'error', {
+        source: 'bidirectionalStream',
+        error
       });
 
       // Make sure to clean up if there's an error
@@ -442,11 +367,7 @@ export class NovaSonicBidirectionalStreamClient {
   }
 
   // Dispatch events to handlers for a specific session
-  private dispatchEventForSession(
-    sessionId: string,
-    eventType: string,
-    data: any
-  ): void {
+  private dispatchEventForSession(sessionId: string, eventType: string, data: any): void {
     const session = this.activeSessions.get(sessionId);
     if (!session) return;
 
@@ -455,15 +376,12 @@ export class NovaSonicBidirectionalStreamClient {
       try {
         handler(data);
       } catch (e) {
-        console.error(
-          `Error in ${eventType} handler for session ${sessionId}: `,
-          e
-        );
+        console.error(`Error in ${eventType} handler for session ${sessionId}: `, e);
       }
     }
 
     // Also dispatch to "any" handlers
-    const anyHandler = session.responseHandlers.get("any");
+    const anyHandler = session.responseHandlers.get('any');
     if (anyHandler) {
       try {
         anyHandler({ type: eventType, data });
@@ -473,45 +391,34 @@ export class NovaSonicBidirectionalStreamClient {
     }
   }
 
-  private createSessionAsyncIterable(
-    sessionId: string
-  ): AsyncIterable<InvokeModelWithBidirectionalStreamInput> {
+  private createSessionAsyncIterable(sessionId: string): AsyncIterable<InvokeModelWithBidirectionalStreamInput> {
+
     if (!this.isSessionActive(sessionId)) {
-      console.log(
-        `Cannot create async iterable: Session ${sessionId} not active`
-      );
+      console.log(`Cannot create async iterable: Session ${sessionId} not active`);
       return {
         [Symbol.asyncIterator]: () => ({
-          next: async () => ({ value: undefined, done: true }),
-        }),
+          next: async () => ({ value: undefined, done: true })
+        })
       };
     }
 
     const session = this.activeSessions.get(sessionId);
     if (!session) {
-      throw new Error(
-        `Cannot create async iterable: Session ${sessionId} not found`
-      );
+      throw new Error(`Cannot create async iterable: Session ${sessionId} not found`);
     }
 
     let eventCount = 0;
 
     return {
       [Symbol.asyncIterator]: () => {
-        console.log(
-          `AsyncIterable iterator requested for session ${sessionId}`
-        );
+        console.log(`AsyncIterable iterator requested for session ${sessionId}`);
 
         return {
-          next: async (): Promise<
-            IteratorResult<InvokeModelWithBidirectionalStreamInput>
-          > => {
+          next: async (): Promise<IteratorResult<InvokeModelWithBidirectionalStreamInput>> => {
             try {
               // Check if session is still active
               if (!session.isActive || !this.activeSessions.has(sessionId)) {
-                console.log(
-                  `Iterator closing for session ${sessionId}, done = true`
-                );
+                console.log(`Iterator closing for session ${sessionId}, done = true`);
                 return { value: undefined, done: true };
               }
               // Wait for items in the queue or close signal
@@ -519,28 +426,22 @@ export class NovaSonicBidirectionalStreamClient {
                 try {
                   await Promise.race([
                     firstValueFrom(session.queueSignal.pipe(take(1))),
-                    firstValueFrom(session.closeSignal.pipe(take(1))).then(
-                      () => {
-                        throw new Error("Stream closed");
-                      }
-                    ),
+                    firstValueFrom(session.closeSignal.pipe(take(1))).then(() => {
+                      throw new Error("Stream closed");
+                    })
                   ]);
                 } catch (error) {
                   if (error instanceof Error) {
-                    if (
-                      error.message === "Stream closed" ||
-                      !session.isActive
-                    ) {
+                    if (error.message === "Stream closed" || !session.isActive) {
                       // This is an expected condition when closing the session
                       if (this.activeSessions.has(sessionId)) {
-                        console.log(
-                          `Session \${ sessionId } closed during wait`
-                        );
+                        console.log(`Session \${ sessionId } closed during wait`);
                       }
                       return { value: undefined, done: true };
                     }
-                  } else {
-                    console.error(`Error on event close`, error);
+                  }
+                  else {
+                    console.error(`Error on event close`, error)
                   }
                 }
               }
@@ -560,10 +461,10 @@ export class NovaSonicBidirectionalStreamClient {
               return {
                 value: {
                   chunk: {
-                    bytes: new TextEncoder().encode(JSON.stringify(nextEvent)),
-                  },
+                    bytes: new TextEncoder().encode(JSON.stringify(nextEvent))
+                  }
                 },
-                done: false,
+                done: false
               };
             } catch (error) {
               console.error(`Error in session ${sessionId} iterator: `, error);
@@ -572,45 +473,31 @@ export class NovaSonicBidirectionalStreamClient {
             }
           },
 
-          return: async (): Promise<
-            IteratorResult<InvokeModelWithBidirectionalStreamInput>
-          > => {
+          return: async (): Promise<IteratorResult<InvokeModelWithBidirectionalStreamInput>> => {
             console.log(`Iterator return () called for session ${sessionId}`);
             session.isActive = false;
             return { value: undefined, done: true };
           },
 
-          throw: async (
-            error: any
-          ): Promise<
-            IteratorResult<InvokeModelWithBidirectionalStreamInput>
-          > => {
-            console.log(
-              `Iterator throw () called for session ${sessionId} with error: `,
-              error
-            );
+          throw: async (error: any): Promise<IteratorResult<InvokeModelWithBidirectionalStreamInput>> => {
+            console.log(`Iterator throw () called for session ${sessionId} with error: `, error);
             session.isActive = false;
             throw error;
-          },
+          }
         };
-      },
+      }
     };
   }
 
   // Process the response stream from AWS Bedrock
-  private async processResponseStream(
-    sessionId: string,
-    response: any
-  ): Promise<void> {
+  private async processResponseStream(sessionId: string, response: any): Promise<void> {
     const session = this.activeSessions.get(sessionId);
     if (!session) return;
 
     try {
       for await (const event of response.body) {
         if (!session.isActive) {
-          console.log(
-            `Session ${sessionId} is no longer active, stopping response processing`
-          );
+          console.log(`Session ${sessionId} is no longer active, stopping response processing`);
           break;
         }
         if (event.chunk?.bytes) {
@@ -621,131 +508,88 @@ export class NovaSonicBidirectionalStreamClient {
             try {
               const jsonResponse = JSON.parse(textResponse);
               if (jsonResponse.event?.contentStart) {
-                this.dispatchEvent(
-                  sessionId,
-                  "contentStart",
-                  jsonResponse.event.contentStart
-                );
+                this.dispatchEvent(sessionId, 'contentStart', jsonResponse.event.contentStart);
               } else if (jsonResponse.event?.textOutput) {
-                this.dispatchEvent(
-                  sessionId,
-                  "textOutput",
-                  jsonResponse.event.textOutput
-                );
+                this.dispatchEvent(sessionId, 'textOutput', jsonResponse.event.textOutput);
               } else if (jsonResponse.event?.audioOutput) {
-                this.dispatchEvent(
-                  sessionId,
-                  "audioOutput",
-                  jsonResponse.event.audioOutput
-                );
+                this.dispatchEvent(sessionId, 'audioOutput', jsonResponse.event.audioOutput);
               } else if (jsonResponse.event?.toolUse) {
-                this.dispatchEvent(
-                  sessionId,
-                  "toolUse",
-                  jsonResponse.event.toolUse
-                );
+                this.dispatchEvent(sessionId, 'toolUse', jsonResponse.event.toolUse);
 
                 // Store tool use information for later
                 session.toolUseContent = jsonResponse.event.toolUse;
                 session.toolUseId = jsonResponse.event.toolUse.toolUseId;
                 session.toolName = jsonResponse.event.toolUse.toolName;
-              } else if (
-                jsonResponse.event?.contentEnd &&
-                jsonResponse.event?.contentEnd?.type === "TOOL"
-              ) {
+              } else if (jsonResponse.event?.contentEnd &&
+                jsonResponse.event?.contentEnd?.type === 'TOOL') {
+
                 // Process tool use
                 console.log(`Processing tool use for session ${sessionId}`);
-                this.dispatchEvent(sessionId, "toolEnd", {
+                this.dispatchEvent(sessionId, 'toolEnd', {
                   toolUseContent: session.toolUseContent,
                   toolUseId: session.toolUseId,
-                  toolName: session.toolName,
+                  toolName: session.toolName
                 });
 
                 console.log("calling tooluse");
-                console.log("tool use content : ", session.toolUseContent);
+                console.log("tool use content : ", session.toolUseContent)
                 // function calling
-                const toolResult = await this.processToolUse(
-                  session.toolName,
-                  session.toolUseContent
-                );
+                const toolResult = await this.processToolUse(session.toolName, session.toolUseContent);
 
                 // Send tool result
                 this.sendToolResult(sessionId, session.toolUseId, toolResult);
 
                 // Also dispatch event about tool result
-                this.dispatchEvent(sessionId, "toolResult", {
+                this.dispatchEvent(sessionId, 'toolResult', {
                   toolUseId: session.toolUseId,
-                  result: toolResult,
+                  result: toolResult
                 });
               } else if (jsonResponse.event?.contentEnd) {
-                this.dispatchEvent(
-                  sessionId,
-                  "contentEnd",
-                  jsonResponse.event.contentEnd
-                );
-              } else {
+                this.dispatchEvent(sessionId, 'contentEnd', jsonResponse.event.contentEnd);
+              }
+              else {
                 // Handle other events
                 const eventKeys = Object.keys(jsonResponse.event || {});
-                console.log(`Event keys for session ${sessionId}: `, eventKeys);
-                console.log(`Handling other events`);
+                console.log(`Event keys for session ${sessionId}: `, eventKeys)
+                console.log(`Handling other events`)
                 if (eventKeys.length > 0) {
-                  this.dispatchEvent(
-                    sessionId,
-                    eventKeys[0],
-                    jsonResponse.event
-                  );
+                  this.dispatchEvent(sessionId, eventKeys[0], jsonResponse.event);
                 } else if (Object.keys(jsonResponse).length > 0) {
-                  this.dispatchEvent(sessionId, "unknown", jsonResponse);
+                  this.dispatchEvent(sessionId, 'unknown', jsonResponse);
                 }
               }
             } catch (e) {
-              console.log(
-                `Raw text response for session ${sessionId}(parse error): `,
-                textResponse
-              );
+              console.log(`Raw text response for session ${sessionId}(parse error): `, textResponse);
             }
           } catch (e) {
-            console.error(
-              `Error processing response chunk for session ${sessionId}: `,
-              e
-            );
+            console.error(`Error processing response chunk for session ${sessionId}: `, e);
           }
         } else if (event.modelStreamErrorException) {
-          console.error(
-            `Model stream error for session ${sessionId}: `,
-            event.modelStreamErrorException
-          );
-          this.dispatchEvent(sessionId, "error", {
-            type: "modelStreamErrorException",
-            details: event.modelStreamErrorException,
+          console.error(`Model stream error for session ${sessionId}: `, event.modelStreamErrorException);
+          this.dispatchEvent(sessionId, 'error', {
+            type: 'modelStreamErrorException',
+            details: event.modelStreamErrorException
           });
         } else if (event.internalServerException) {
-          console.error(
-            `Internal server error for session ${sessionId}: `,
-            event.internalServerException
-          );
-          this.dispatchEvent(sessionId, "error", {
-            type: "internalServerException",
-            details: event.internalServerException,
+          console.error(`Internal server error for session ${sessionId}: `, event.internalServerException);
+          this.dispatchEvent(sessionId, 'error', {
+            type: 'internalServerException',
+            details: event.internalServerException
           });
         }
       }
 
-      console.log(
-        `Response stream processing complete for session ${sessionId}`
-      );
-      this.dispatchEvent(sessionId, "streamComplete", {
-        timestamp: new Date().toISOString(),
+      console.log(`Response stream processing complete for session ${sessionId}`);
+      this.dispatchEvent(sessionId, 'streamComplete', {
+        timestamp: new Date().toISOString()
       });
+
     } catch (error) {
-      console.error(
-        `Error processing response stream for session ${sessionId}: `,
-        error
-      );
-      this.dispatchEvent(sessionId, "error", {
-        source: "responseStream",
-        message: "Error processing response stream",
-        details: error instanceof Error ? error.message : String(error),
+      console.error(`Error processing response stream for session ${sessionId}: `, error);
+      this.dispatchEvent(sessionId, 'error', {
+        source: 'responseStream',
+        message: 'Error processing response stream',
+        details: error instanceof Error ? error.message : String(error)
       });
     }
   }
@@ -760,6 +604,7 @@ export class NovaSonicBidirectionalStreamClient {
     session.queueSignal.next();
   }
 
+
   // Set up initial events for a session
   private setupSessionStartEvent(sessionId: string): void {
     console.log(`Setting up initial events for session ${sessionId}...`);
@@ -770,9 +615,9 @@ export class NovaSonicBidirectionalStreamClient {
     this.addEventToSessionQueue(sessionId, {
       event: {
         sessionStart: {
-          inferenceConfiguration: session.inferenceConfig,
-        },
-      },
+          inferenceConfiguration: session.inferenceConfig
+        }
+      }
     });
   }
   public setupPromptStartEvent(sessionId: string): void {
@@ -792,46 +637,33 @@ export class NovaSonicBidirectionalStreamClient {
             mediaType: "application/json",
           },
           toolConfiguration: {
-            tools: [
-              {
-                toolSpec: {
-                  name: "getDateAndTimeTool",
-                  description:
-                    "Get information about the current date and time.",
-                  inputSchema: {
-                    json: DefaultToolSchema,
-                  },
-                },
-              },
-              {
-                toolSpec: {
-                  name: "getmonopoly",
-                  description: "Get information for anything about Monopoly.",
-                  inputSchema: {
-                    json: DefaultRagSchema,
-                  },
-                },
-              },
-              {
-                toolSpec: {
-                  name: "getWeatherTool",
-                  description:
-                    "Get the current weather for a given location, based on its WGS84 coordinates.",
-                  inputSchema: {
-                    json: WeatherToolSchema,
-                  },
-                },
-              },
-            ],
+            tools: [{
+              toolSpec: {
+                name: "getDateAndTimeTool",
+                description: "Get information about the current date and time.",
+                inputSchema: {
+                  json: DefaultToolSchema
+                }
+              }
+            },
+            {
+              toolSpec: {
+                name: "getWeatherTool",
+                description: "Get the current weather for a given location, based on its WGS84 coordinates.",
+                inputSchema: {
+                  json: WeatherToolSchema
+                }
+              }
+            }
+            ]
           },
         },
-      },
+      }
     });
     session.isPromptStartSent = true;
   }
 
-  public setupSystemPromptEvent(
-    sessionId: string,
+  public setupSystemPromptEvent(sessionId: string,
     textConfig: typeof DefaultTextConfiguration = DefaultTextConfiguration,
     systemPromptContent: string = DefaultSystemPrompt
   ): void {
@@ -850,7 +682,7 @@ export class NovaSonicBidirectionalStreamClient {
           role: "SYSTEM",
           textInputConfiguration: textConfig,
         },
-      },
+      }
     });
 
     // Text input content
@@ -861,7 +693,7 @@ export class NovaSonicBidirectionalStreamClient {
           contentName: textPromptID,
           content: systemPromptContent,
         },
-      },
+      }
     });
 
     // Text content end
@@ -871,7 +703,7 @@ export class NovaSonicBidirectionalStreamClient {
           promptName: session.promptName,
           contentName: textPromptID,
         },
-      },
+      }
     });
   }
 
@@ -879,9 +711,7 @@ export class NovaSonicBidirectionalStreamClient {
     sessionId: string,
     audioConfig: typeof DefaultAudioInputConfiguration = DefaultAudioInputConfiguration
   ): void {
-    console.log(
-      `Setting up startAudioContent event for session ${sessionId}...`
-    );
+    console.log(`Setting up startAudioContent event for session ${sessionId}...`);
     const session = this.activeSessions.get(sessionId);
     if (!session) return;
 
@@ -897,23 +727,20 @@ export class NovaSonicBidirectionalStreamClient {
           role: "USER",
           audioInputConfiguration: audioConfig,
         },
-      },
+      }
     });
     session.isAudioContentStartSent = true;
     console.log(`Initial events setup complete for session ${sessionId}`);
   }
 
   // Stream an audio chunk for a session
-  public async streamAudioChunk(
-    sessionId: string,
-    audioData: Buffer
-  ): Promise<void> {
+  public async streamAudioChunk(sessionId: string, audioData: Buffer): Promise<void> {
     const session = this.activeSessions.get(sessionId);
     if (!session || !session.isActive || !session.audioContentId) {
       throw new Error(`Invalid session ${sessionId} for audio streaming`);
     }
     // Convert audio to base64
-    const base64Data = audioData.toString("base64");
+    const base64Data = audioData.toString('base64');
 
     this.addEventToSessionQueue(sessionId, {
       event: {
@@ -922,23 +749,18 @@ export class NovaSonicBidirectionalStreamClient {
           contentName: session.audioContentId,
           content: base64Data,
         },
-      },
+      }
     });
   }
 
+
   // Send tool result back to the model
-  private async sendToolResult(
-    sessionId: string,
-    toolUseId: string,
-    result: any
-  ): Promise<void> {
+  private async sendToolResult(sessionId: string, toolUseId: string, result: any): Promise<void> {
     const session = this.activeSessions.get(sessionId);
-    console.log("inside tool result");
+    console.log("inside tool result")
     if (!session || !session.isActive) return;
 
-    console.log(
-      `Sending tool result for session ${sessionId}, tool use ID: ${toolUseId}`
-    );
+    console.log(`Sending tool result for session ${sessionId}, tool use ID: ${toolUseId}`);
     const contentId = randomUUID();
 
     // Tool content start
@@ -954,24 +776,23 @@ export class NovaSonicBidirectionalStreamClient {
             toolUseId: toolUseId,
             type: "TEXT",
             textInputConfiguration: {
-              mediaType: "text/plain",
-            },
-          },
-        },
-      },
+              mediaType: "text/plain"
+            }
+          }
+        }
+      }
     });
 
     // Tool content input
-    const resultContent =
-      typeof result === "string" ? result : JSON.stringify(result);
+    const resultContent = typeof result === 'string' ? result : JSON.stringify(result);
     this.addEventToSessionQueue(sessionId, {
       event: {
         toolResult: {
           promptName: session.promptName,
           contentName: contentId,
-          content: resultContent,
-        },
-      },
+          content: resultContent
+        }
+      }
     });
 
     // Tool content end
@@ -979,9 +800,9 @@ export class NovaSonicBidirectionalStreamClient {
       event: {
         contentEnd: {
           promptName: session.promptName,
-          contentName: contentId,
-        },
-      },
+          contentName: contentId
+        }
+      }
     });
 
     console.log(`Tool result sent for session ${sessionId}`);
@@ -996,12 +817,12 @@ export class NovaSonicBidirectionalStreamClient {
         contentEnd: {
           promptName: session.promptName,
           contentName: session.audioContentId,
-        },
-      },
+        }
+      }
     });
 
     // Wait to ensure it's processed
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    await new Promise(resolve => setTimeout(resolve, 500));
   }
 
   public async sendPromptEnd(sessionId: string): Promise<void> {
@@ -1011,13 +832,13 @@ export class NovaSonicBidirectionalStreamClient {
     await this.addEventToSessionQueue(sessionId, {
       event: {
         promptEnd: {
-          promptName: session.promptName,
-        },
-      },
+          promptName: session.promptName
+        }
+      }
     });
 
     // Wait to ensure it's processed
-    await new Promise((resolve) => setTimeout(resolve, 300));
+    await new Promise(resolve => setTimeout(resolve, 300));
   }
 
   public async sendSessionEnd(sessionId: string): Promise<void> {
@@ -1026,12 +847,12 @@ export class NovaSonicBidirectionalStreamClient {
 
     await this.addEventToSessionQueue(sessionId, {
       event: {
-        sessionEnd: {},
-      },
+        sessionEnd: {}
+      }
     });
 
     // Wait to ensure it's processed
-    await new Promise((resolve) => setTimeout(resolve, 300));
+    await new Promise(resolve => setTimeout(resolve, 300));
 
     // Now it's safe to clean up
     session.isActive = false;
@@ -1043,11 +864,7 @@ export class NovaSonicBidirectionalStreamClient {
   }
 
   // Register an event handler for a session
-  public registerEventHandler(
-    sessionId: string,
-    eventType: string,
-    handler: (data: any) => void
-  ): void {
+  public registerEventHandler(sessionId: string, eventType: string, handler: (data: any) => void): void {
     const session = this.activeSessions.get(sessionId);
     if (!session) {
       throw new Error(`Session ${sessionId} not found`);
@@ -1065,15 +882,12 @@ export class NovaSonicBidirectionalStreamClient {
       try {
         handler(data);
       } catch (e) {
-        console.error(
-          `Error in ${eventType} handler for session ${sessionId}:`,
-          e
-        );
+        console.error(`Error in ${eventType} handler for session ${sessionId}:`, e);
       }
     }
 
     // Also dispatch to "any" handlers
-    const anyHandler = session.responseHandlers.get("any");
+    const anyHandler = session.responseHandlers.get('any');
     if (anyHandler) {
       try {
         anyHandler({ type: eventType, data });
@@ -1085,9 +899,7 @@ export class NovaSonicBidirectionalStreamClient {
 
   public async closeSession(sessionId: string): Promise<void> {
     if (this.sessionCleanupInProgress.has(sessionId)) {
-      console.log(
-        `Cleanup already in progress for session ${sessionId}, skipping`
-      );
+      console.log(`Cleanup already in progress for session ${sessionId}, skipping`);
       return;
     }
     this.sessionCleanupInProgress.add(sessionId);
@@ -1098,10 +910,7 @@ export class NovaSonicBidirectionalStreamClient {
       await this.sendSessionEnd(sessionId);
       console.log(`Session ${sessionId} cleanup complete`);
     } catch (error) {
-      console.error(
-        `Error during closing sequence for session ${sessionId}:`,
-        error
-      );
+      console.error(`Error during closing sequence for session ${sessionId}:`, error);
 
       // Ensure cleanup happens even if there's an error
       const session = this.activeSessions.get(sessionId);
@@ -1118,13 +927,8 @@ export class NovaSonicBidirectionalStreamClient {
 
   // Same for forceCloseSession:
   public forceCloseSession(sessionId: string): void {
-    if (
-      this.sessionCleanupInProgress.has(sessionId) ||
-      !this.activeSessions.has(sessionId)
-    ) {
-      console.log(
-        `Session ${sessionId} already being cleaned up or not active`
-      );
+    if (this.sessionCleanupInProgress.has(sessionId) || !this.activeSessions.has(sessionId)) {
+      console.log(`Session ${sessionId} already being cleaned up or not active`);
       return;
     }
 
@@ -1147,4 +951,5 @@ export class NovaSonicBidirectionalStreamClient {
       this.sessionCleanupInProgress.delete(sessionId);
     }
   }
+
 }
