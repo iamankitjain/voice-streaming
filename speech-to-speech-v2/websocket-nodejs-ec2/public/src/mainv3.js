@@ -644,4 +644,4 @@ stopButton.addEventListener("click", stopStreaming);
 document.addEventListener("DOMContentLoaded", initAudio);
 
 
-document.getElementById("SYSTEM_PROMPT").innerHTML = SYSTEM_PROMPT;
+document.getElementById("prompt").innerHTML = SYSTEM_PROMPT;
