@@ -39,10 +39,13 @@ const audioPlayer = new AudioPlayer();
 let sessionInitialized = false;
 
 // Custom system prompt - you can modify this
-// let SYSTEM_PROMPT =
-//   "You are a friend. The user and you will engage in a spoken " +
-//   "dialog exchanging the transcripts of a natural real-time conversation. Keep your responses short, " +
-//   "generally two or three sentences for chatty scenarios.";
+let SYSTEM_PROMPT =
+`
+You are a friend. The user and you will engage in a spoken dialog exchanging the transcripts of a natural real-time conversation. \
+Keep your responses short, generally two or three sentences for chatty scenarios.You may start each of your sentences
+ with emotions in square brackets such as [amused], [neutral] or any other stage command such as 
+ [joyful]. Only use a single pair of square brackets for indicating a stage command.
+`;
 
 // Initialize WebSocket audio
 async function initAudio() {
@@ -509,3 +512,5 @@ stopButton.addEventListener("click", stopStreaming);
 
 // Initialize the app when the page loads
 document.addEventListener("DOMContentLoaded", initAudio);
+
+document.getElementById("prompt").innerHTML = SYSTEM_PROMPT;
