@@ -12,11 +12,15 @@
     <div id="app">
         <div id="promptdiv" class="">
             <label for="prompt" class="prompt-label">Please enter the prompt for the agent here:</label>
-            <br/>
+            <br />
             <textarea id="prompt" rows="5" cols="200"></textarea>
         </div>
         <div id="status" class="disconnected">Disconnected</div>
         <div id="chat-container"></div>
+        <div>
+            <div id="chat-summary" class="prompt-label"></div>
+        </div>
+
         <div id="controls">
             <button id="start" class="button">Start Streaming</button>
             <button id="stop" class="button" disabled>Stop Streaming</button>
