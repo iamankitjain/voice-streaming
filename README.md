@@ -46,10 +46,3 @@ See [CONTRIBUTING](CONTRIBUTING.md#security-issue-notifications) for more inform
 
 This library is licensed under the MIT-0 License. See the [LICENSE](LICENSE) file.
 
-## 👏 Contributors
-
-Shout out to these awesome contributors:
-
-<a href="https://github.com/aws-samples/amazon-nova-samples/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=aws-samples/amazon-nova-samples" />
-</a>
