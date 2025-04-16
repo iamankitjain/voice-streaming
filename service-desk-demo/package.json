@@ -5,7 +5,7 @@
   "type": "commonjs",
   "scripts": {
     "build": "tsc",
-    "start": "node dist/server.js",
+    "start": "npm run build && pm2 dist/server.js",
     "cli": "ts-node src/index-cli.ts",
     "dev": "ts-node src/server.ts"
   },
