@@ -2,22 +2,47 @@
 <html>
 
 <head>
-    <title>Audio Streaming to Bedrock</title>
+    <title>Service Desk</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="/src/style.css">
+    <link rel="stylesheet" href="/src/collapse.css">
     <script src="/socket.io/socket.io.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
 </head>
 
 <body>
     <div id="app">
+        <div id="promptdiv" class="">
+            <label for="prompt" class="prompt-label">Please enter the prompt for the agent here:</label>
+            <br />
+            <textarea id="prompt" rows="5" cols="200" style="width: 1711px; height: 103px;"></textarea>
+        </div>
         <div id="status" class="disconnected">Disconnected</div>
-        <div id="chat-container"></div>
+        <button type="button" class="collapsible">Conversation Details</button>
+        <div id="chat-container" class="chat-container" style="display: none;"></div>
         <div id="controls">
-            <button id="start" class="button">Start Streaming</button>
-            <button id="stop" class="button" disabled>Stop Streaming</button>
+            <i class="fa fa-microphone" style="font-size:120px; color:green;" id="microphoneButton"
+                class="microphoneButton"></i></button>
         </div>
     </div>
-    <script type="module" src="/src/main.js"></script>
+    <script type="module" src="/src/mainv3.js"></script>
 </body>
+
+<script>
+    var coll = document.getElementsByClassName("collapsible");
+    var i;
+
+    for (i = 0; i < coll.length; i++) {
+        coll[i].addEventListener("click", function () {
+            this.classList.toggle("active");
+            var promptdiv = this.nextElementSibling;
+            if (promptdiv.style.display === "block") {
+                promptdiv.style.display = "none";
+            } else {
+                promptdiv.style.display = "block";
+            }
+        });
+    }
+</script>
 
 </html>
